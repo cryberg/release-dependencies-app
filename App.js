@@ -100,7 +100,9 @@ Ext.define('CustomApp', {
             	Release: (story.get("Release") ? story.get("Release").Name : ""),
             	_ref: story.get("_ref"), 
             	Predecessor: {},
+            	PredIterationSortNum: 0,
             	Successor: {},
+            	SuccIterationSortNum: 0,
             	StoryScheduleState: story.get("ScheduleState"),
             	Iteration: (story.get("Iteration") ? story.get("Iteration").Name : ""),
     			DueDate: story.get("DueDate"),
@@ -152,23 +154,25 @@ Ext.define('CustomApp', {
                 			Project: (predecessor.get("Project") ? predecessor.get("Project").Name : ""),
                 			ScheduleState: predecessor.get("ScheduleState"),
                 			Iteration: iteration,
-                			IterationSortNumber: self._getSortableIteration(iteration),
                 			DueDate: predecessor.get("DueDate")
                         }
+                        s.PredIterationSortNum = self._getSortableIteration(iteration)
                         storyDuplicationArray.push(s);
                     });
                     
                     var successorsArray = story.SuccessorsStore.getRange();
                     _.each(successorsArray, function(successor) {
                         var s = JSON.parse(JSON.stringify(stories.get(story.get("FormattedID"))));
+                        var iteration = (successor.get("Iteration") ? successor.get("Iteration").Name : "");
                         s.Successor = { 
 	            			_ref: successor.get("_ref"), 
 	            			FormattedID: successor.get("FormattedID"), 
 	            			Name: successor.get("Name"),
 	            			Project: (successor.get("Project") ? successor.get("Project").Name : ""),
 	            			ScheduleState: successor.get("ScheduleState"),
-	            			Iteration: (successor.get("Iteration") ? successor.get("Iteration").Name : "")
+	            			Iteration: iteration
 	            		};
+	            		s.SuccIterationSortNum = self._getSortableIteration(iteration)
                         storyDuplicationArray.push(s);
                     });
              
@@ -246,7 +250,7 @@ Ext.define('CustomApp', {
             }, {
                 text: "Predecessor Iteration", dataIndex: "Predecessor",
                 getSortParam: function() {
-            	    return "IterationSortNumber"; //this wont work until we get one Predecessor per row
+            	    return "PredIterationSortNum";
                 },
                 renderer: function(value) {
                     return value.Iteration;
@@ -313,6 +317,9 @@ Ext.define('CustomApp', {
                 }
             }, {
                 text: "Successor Iteration", dataIndex: "Successor",
+                getSortParam: function() {
+            	    return "SuccIterationSortNum";
+                },
                 renderer: function(value) {
                     return value.Iteration;
                 }
