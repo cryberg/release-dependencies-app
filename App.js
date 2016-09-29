@@ -9,7 +9,7 @@ Ext.define('CustomApp', {
         },
         {
             xtype: 'container',
-            itemId: 'milestoneCombobox',
+            itemId: 'comboboxContainer',
             cls: 'milestone-combo-box'
         },
         {
@@ -22,8 +22,8 @@ Ext.define('CustomApp', {
         this._myMask = new Ext.LoadMask(Ext.getBody(), {msg:"Loading data..."});
         this._myMask.show();
         
-        this.down('#milestoneCombobox').add({
-            xtype: 'rallymilestonecombobox',
+        this.down('#comboboxContainer').add({
+            xtype: 'rallyreleasecombobox',
             itemId: 'stateComboBox',
             allowNoEntry: true,
             model: ['userstory'],
@@ -36,7 +36,7 @@ Ext.define('CustomApp', {
    },
     _getStateFilter: function() {
         return {
-            property: 'FeatureMilestones',
+            property: 'Release',
             operator: '=',
             value: this.down('#stateComboBox').getRawValue()
         };
@@ -87,9 +87,9 @@ Ext.define('CustomApp', {
        });
     },
     _onDataLoaded: function(store, data) {
-        var stories = [],
-            pendingPredecessors= data.length,
-            pendingSuccessors = data.length;
+        var stories = new Map(),
+            promises = [],
+            self = this;
         _.each(data, function(story) {
             var s = { 
             	Feature: story.get("Feature"), 
@@ -99,11 +99,12 @@ Ext.define('CustomApp', {
             	Project: (story.get("Project") ? story.get("Project").Name : ""),
             	Release: (story.get("Release") ? story.get("Release").Name : ""),
             	_ref: story.get("_ref"), 
-            	Predecessors: [],
-            	Successors: [],
+            	Predecessor: {},
+            	Successor: {},
             	StoryScheduleState: story.get("ScheduleState"),
             	Iteration: (story.get("Iteration") ? story.get("Iteration").Name : ""),
-    			DueDate: story.get("DueDate")
+    			DueDate: story.get("DueDate"),
+    			
             };
             
             if (s.Feature) {
@@ -113,65 +114,100 @@ Ext.define('CustomApp', {
                 s.FeatureNumericID = Number(s.Feature.FormattedID.replace(/\D+/g, ''));
             }
             
-            var predecessors = story.getCollection("Predecessors", { fetch: ["FormattedID", "Name", "Project", "ScheduleState", "Iteration", "DueDate"] });
-            predecessors.load({ 
-            	callback: function(records) { 
-	            	_.each(records, function(predecessor) { 
-	            		s.Predecessors.push({ 
-	            			_ref: predecessor.get("_ref"), 
-	            			FormattedID: predecessor.get("FormattedID"), 
-	            			Name: predecessor.get("Name"),
-	            			Project: (predecessor.get("Project") ? predecessor.get("Project").Name : ""),
-	            			ScheduleState: predecessor.get("ScheduleState"),
-	            			Iteration: (predecessor.get("Iteration") ? predecessor.get("Iteration").Name : ""),
-	            			DueDate: predecessor.get("DueDate")
-	            		});
-	            		
-	            		//console.log(s.Predecessors);
-	            	}, this);
+            s.IterationSortNumber = this._getSortableIteration(s.Iteration);
+            
+            var predecessorsStore = story.getCollection("Predecessors");
+            var predecessorPromise = predecessorsStore.load({
+                fetch: ["FormattedID", "Name", "Project", "ScheduleState", "Iteration", "DueDate"]
+            });
 
-	            	--pendingPredecessors;
-
-                    if (pendingPredecessors === 0) {
-                        // this._makeGrid(stories);
-                        // console.log('Predecessors end');
-                    }
-                },
-                scope: this
+            var successorsStore = story.getCollection("Successors");
+            var successorPromise = successorsStore.load({
+                fetch: ["FormattedID", "Name", "Project", "ScheduleState", "Iteration"]
             });
             
-            var successors = story.getCollection("Successors", { fetch: ["FormattedID", "Name", "Project", "ScheduleState", "Iteration", "DueDate"] });
-            successors.load({ 
-            	callback: function(records) { 
-	            	_.each(records, function(successor) { 
-	            		s.Successors.push({ 
+            promises.push(predecessorPromise, successorPromise);
+            story.PredecessorsStore = predecessorsStore;
+            story.SuccessorsStore = successorsStore;
+
+            stories.set(s.FormattedID, s);
+            
+        }, this);
+        
+        //wait for all stores to load
+        Deft.Promise.all(promises).then({
+            success: function() {
+                _.each(data, function(story) {
+                    
+                    var storyDuplicationArray = [];
+                    
+                    var predecessorsArray = story.PredecessorsStore.getRange();
+                    _.each(predecessorsArray, function(predecessor) {
+                        var s = JSON.parse(JSON.stringify(stories.get(story.get("FormattedID"))));
+                        var iteration = (predecessor.get("Iteration") ? predecessor.get("Iteration").Name : "");
+                        s.Predecessor = {
+                            _ref: predecessor.get("_ref"), 
+                			FormattedID: predecessor.get("FormattedID"), 
+                			Name: predecessor.get("Name"),
+                			Project: (predecessor.get("Project") ? predecessor.get("Project").Name : ""),
+                			ScheduleState: predecessor.get("ScheduleState"),
+                			Iteration: iteration,
+                			IterationSortNumber: self._getSortableIteration(iteration),
+                			DueDate: predecessor.get("DueDate")
+                        }
+                        storyDuplicationArray.push(s);
+                    });
+                    
+                    var successorsArray = story.SuccessorsStore.getRange();
+                    _.each(successorsArray, function(successor) {
+                        var s = JSON.parse(JSON.stringify(stories.get(story.get("FormattedID"))));
+                        s.Successor = { 
 	            			_ref: successor.get("_ref"), 
 	            			FormattedID: successor.get("FormattedID"), 
 	            			Name: successor.get("Name"),
 	            			Project: (successor.get("Project") ? successor.get("Project").Name : ""),
 	            			ScheduleState: successor.get("ScheduleState"),
 	            			Iteration: (successor.get("Iteration") ? successor.get("Iteration").Name : "")
-	            		});
-	            		
-	           // 		console.log(s.Successors);
-	            		
-	            	}, this);
-
-	            	--pendingSuccessors;
-	           // 	console.log(s.Successors);
-
-                    if (pendingSuccessors === 0) {
-                        this._makeGrid(stories);
+	            		};
+                        storyDuplicationArray.push(s);
+                    });
+             
+                    if(storyDuplicationArray.length !== 0) {
+                        stories.set(story.get("FormattedID"), storyDuplicationArray);
                     }
-                },
-                scope: this
-            });
-
-            stories.push(s);
-            
-        }, this);
+                    
+                });
+                
+                var storiesArray = this._getStoriesArray(stories);
+                this._makeGrid(storiesArray);
+            },
+            scope: this
+        });
     },
     
+    _getSortableIteration: function(_iterationStr) {
+        if(!!_iterationStr) {
+            var iterationStr = _iterationStr.replace("Sprint ", "");
+            var iterationDecimal = iterationStr.split('.')[1].charCodeAt(0) - 64
+            iterationStr = iterationStr.split('.')[0] + "." + iterationDecimal;
+            return Number(iterationStr);
+        } else {
+            return 0;
+        }
+    },
+    _getStoriesArray: function(storiesMap) {
+        var storiesArray = [];
+        storiesMap.forEach(function(value, key) {
+            if(Array.isArray(value)) {
+                _.each(value, function(storyItem){
+                    storiesArray.push(storyItem);
+                });
+            } else {
+                storiesArray.push(value);
+            }
+        }, storiesMap);
+        return storiesArray;
+    },
     _makeGrid:function(stories){
         this._myMask.hide();
         var store = Ext.create('Rally.data.custom.Store', {
@@ -188,34 +224,37 @@ Ext.define('CustomApp', {
             showPagingToolbar: false,
             columnCfgs: [
             {
-                text: "Predecessor ID", dataIndex: "Predecessors",
+                text: "Predecessor ID", dataIndex: "Predecessor",
                 renderer: function(value) {
-                    if(value[0]) { return value[0].FormattedID; }
+                    return value.FormattedID;
                 }
             }, {
-                text: "Predecessor Name", dataIndex: "Predecessors",
+                text: "Predecessor Name", dataIndex: "Predecessor",
                 renderer: function(value) {
-                    if(value[0]) { return value[0].Name; }
+                    return value.Name;
                 }
             }, {
-                text: "Predecessor Project", dataIndex: "Predecessors",
+                text: "Predecessor Project", dataIndex: "Predecessor",
                 renderer: function(value) {
-                    if(value[0]) { return value[0].Project; }
+                    return value.Project;
                 }
             }, {
-                text: "Predecessor Schedule State", dataIndex: "Predecessors",
+                text: "Predecessor Schedule State", dataIndex: "Predecessor",
                 renderer: function(value) {
-                    if(value[0]) { return value[0].ScheduleState; }
+                    return value.ScheduleState;
                 }
             }, {
-                text: "Predecessor Iteration", dataIndex: "Predecessors",
+                text: "Predecessor Iteration", dataIndex: "Predecessor",
+                getSortParam: function() {
+            	    return "IterationSortNumber"; //this wont work until we get one Predecessor per row
+                },
                 renderer: function(value) {
-                    if(value[0]) { return value[0].Iteration; }
+                    return value.Iteration;
                 }
             }, {
-                text: "Predecessor Due Date", dataIndex: "Predecessors",
+                text: "Predecessor Due Date", dataIndex: "Predecessor",
                 renderer: function(value) {
-                    if(value[0]) { return value[0].DueDate; }
+                    return value.DueDate;
                 }
             }, { 
             	text: "Story ID", dataIndex: "FormattedID", xtype: "templatecolumn",
@@ -230,7 +269,10 @@ Ext.define('CustomApp', {
             }, {
                 text: "Story Schedule State", dataIndex: "StoryScheduleState"
             }, {
-                text: "Story Iteration", dataIndex: "Iteration"
+                text: "Story Iteration", dataIndex: "Iteration",
+                getSortParam: function(value) {
+            	    return "IterationSortNumber";
+                }
             }, {
                 text: "Story Due Date", dataIndex: "DueDate"
             }, {
@@ -244,7 +286,7 @@ Ext.define('CustomApp', {
             }, {
                 text: "Feature Name", dataIndex: "FeatureName", flex: 1
             }, {
-                text: "Successor ID", dataIndex: "Successors",
+                text: "Successor ID", dataIndex: "Successor",
                 renderer: function(value) {
                     // // console.log(value);
                     // var html = [];
@@ -252,27 +294,27 @@ Ext.define('CustomApp', {
                 	   // html.push('<a href="' + Rally.nav.Manager.getDetailUrl(successor) + '">' + successor.FormattedID + "</a>");
                     // });
                     // return html.join("</br>");
-                    if(value[0]){ return value[0].FormattedID; }
+                    return value.FormattedID;
                 }
             }, {
-                text: "Successor Name", dataIndex: "Successors",
+                text: "Successor Name", dataIndex: "Successor",
                 renderer: function(value) {
-                    if(value[0]) { return value[0].Name; }
+                    return value.Name;
                 }
             }, {
-                text: "Successor Project", dataIndex: "Successors",
+                text: "Successor Project", dataIndex: "Successor",
                 renderer: function(value) {
-                    if(value[0]) { return value[0].Project;}
+                    return value.Project
                 }
             }, {
-                text: "Successor Schedule State", dataIndex: "Successors",
+                text: "Successor Schedule State", dataIndex: "Successor",
                 renderer: function(value) {
-                    if(value[0]) { return value[0].ScheduleState; }
+                    return value.ScheduleState;
                 }
             }, {
-                text: "Successor Iteration", dataIndex: "Successors",
+                text: "Successor Iteration", dataIndex: "Successor",
                 renderer: function(value) {
-                    if(value[0]) { return value[0].Iteration; }
+                    return value.Iteration;
                 }
             }]
         });
