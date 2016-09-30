@@ -10,7 +10,7 @@ Ext.define('CustomApp', {
         {
             xtype: 'container',
             itemId: 'comboboxContainer',
-            cls: 'milestone-combo-box'
+            cls: 'combo-box'
         },
         {
             xtype: 'container',
@@ -100,13 +100,23 @@ Ext.define('CustomApp', {
             	Release: (story.get("Release") ? story.get("Release").Name : ""),
             	_ref: story.get("_ref"), 
             	Predecessor: {},
+            	PredName: "",
+            	PredNumericID: "",
+            	PredProject: "",
+            	PredScheduleState: "",
+            	PredIteration: "",
             	PredIterationSortNum: 0,
+            	PredDueDate: null,
             	Successor: {},
+            	SuccName: "",
+            	SuccNumericID: "",
+            	SuccProject: "",
+            	SuccScheduleState: "",
+            	SuccIteration: "",
             	SuccIterationSortNum: 0,
             	StoryScheduleState: story.get("ScheduleState"),
             	Iteration: (story.get("Iteration") ? story.get("Iteration").Name : ""),
-    			DueDate: story.get("DueDate"),
-    			
+                DueDate: story.get("DueDate")
             };
             
             if (s.Feature) {
@@ -149,14 +159,15 @@ Ext.define('CustomApp', {
                         var iteration = (predecessor.get("Iteration") ? predecessor.get("Iteration").Name : "");
                         s.Predecessor = {
                             _ref: predecessor.get("_ref"), 
-                			FormattedID: predecessor.get("FormattedID"), 
-                			Name: predecessor.get("Name"),
-                			Project: (predecessor.get("Project") ? predecessor.get("Project").Name : ""),
-                			ScheduleState: predecessor.get("ScheduleState"),
-                			Iteration: iteration,
-                			DueDate: predecessor.get("DueDate")
-                        }
-                        s.PredIterationSortNum = self._getSortableIteration(iteration)
+                			FormattedID: predecessor.get("FormattedID")
+                        };
+                        s.PredName = predecessor.get("Name");
+                        s.PredNumericID = Number(s.Predecessor.FormattedID.replace(/\D+/g, ''));
+                        s.PredProject = (predecessor.get("Project") ? predecessor.get("Project").Name : "");
+                        s.PredScheduleState = predecessor.get("ScheduleState");
+                        s.PredIteration = iteration;
+                        s.PredIterationSortNum = self._getSortableIteration(iteration);
+                        s.PredDueDate = predecessor.get("DueDate");
                         storyDuplicationArray.push(s);
                     });
                     
@@ -166,13 +177,14 @@ Ext.define('CustomApp', {
                         var iteration = (successor.get("Iteration") ? successor.get("Iteration").Name : "");
                         s.Successor = { 
 	            			_ref: successor.get("_ref"), 
-	            			FormattedID: successor.get("FormattedID"), 
-	            			Name: successor.get("Name"),
-	            			Project: (successor.get("Project") ? successor.get("Project").Name : ""),
-	            			ScheduleState: successor.get("ScheduleState"),
-	            			Iteration: iteration
+	            			FormattedID: successor.get("FormattedID")
 	            		};
-	            		s.SuccIterationSortNum = self._getSortableIteration(iteration)
+	            		s.SuccName = successor.get("Name");
+	            		s.SuccNumericID = Number(s.Successor.FormattedID.replace(/\D+/g, ''));
+	            		s.SuccProject = (successor.get("Project") ? successor.get("Project").Name : "");
+	            		s.SuccScheduleState = successor.get("ScheduleState");
+	            		s.SuccIteration = iteration;
+	            		s.SuccIterationSortNum = self._getSortableIteration(iteration);
                         storyDuplicationArray.push(s);
                     });
              
@@ -191,8 +203,8 @@ Ext.define('CustomApp', {
     
     _getSortableIteration: function(_iterationStr) {
         if(!!_iterationStr) {
-            var iterationStr = _iterationStr.replace("Sprint ", "");
-            var iterationDecimal = iterationStr.split('.')[1].charCodeAt(0) - 64
+            var iterationStr = _iterationStr.split(" ")[1];
+            var iterationDecimal = iterationStr.split('.')[1].charCodeAt(0) - 64;
             iterationStr = iterationStr.split('.')[0] + "." + iterationDecimal;
             return Number(iterationStr);
         } else {
@@ -228,59 +240,47 @@ Ext.define('CustomApp', {
             showPagingToolbar: false,
             columnCfgs: [
             {
-                text: "Predecessor ID", dataIndex: "Predecessor",
-                renderer: function(value) {
-                    return value.FormattedID;
+                text: "Predecessor ID", dataIndex: "Predecessor", tdCls: "grey-background", width: 75, align: "center",
+                getSortParam: function() {
+                  return "PredNumericID";  
+                },
+                renderer: function(value, meta) {
+                    meta.tdCls = "grey-background";
+                    return value.FormattedID ? '<a href="' + Rally.nav.Manager.getDetailUrl(value) + '">' + value.FormattedID + "</a>" : void 0;
                 }
             }, {
-                text: "Predecessor Name", dataIndex: "Predecessor",
-                renderer: function(value) {
-                    return value.Name;
-                }
+                text: "Predecessor Name", dataIndex: "PredName",  tdCls: "grey-background", width: 175
             }, {
-                text: "Predecessor Project", dataIndex: "Predecessor",
-                renderer: function(value) {
-                    return value.Project;
-                }
+                text: "Predecessor Project", dataIndex: "PredProject",  tdCls: "grey-background"
             }, {
-                text: "Predecessor Schedule State", dataIndex: "Predecessor",
-                renderer: function(value) {
-                    return value.ScheduleState;
-                }
+                text: "Predecessor State", dataIndex: "PredScheduleState",  tdCls: "grey-background", width: 75
             }, {
-                text: "Predecessor Iteration", dataIndex: "Predecessor",
+                text: "Predecessor Iteration", dataIndex: "PredIteration",  tdCls: "grey-background", width: 70,
                 getSortParam: function() {
             	    return "PredIterationSortNum";
-                },
-                renderer: function(value) {
-                    return value.Iteration;
                 }
             }, {
-                text: "Predecessor Due Date", dataIndex: "Predecessor",
-                renderer: function(value) {
-                    return value.DueDate;
-                }
+                text: "Predecessor Due Date", dataIndex: "PredDueDate",  tdCls: "grey-background", xtype: 'datecolumn', format: 'D n/j/Y', width: 75
             }, { 
-            	text: "Story ID", dataIndex: "FormattedID", xtype: "templatecolumn",
-            	tpl: Ext.create("Rally.ui.renderer.template.FormattedIDTemplate"),
+            	text: "Story ID", dataIndex: "FormattedID", xtype: "templatecolumn", width: 75, tpl: Ext.create("Rally.ui.renderer.template.FormattedIDTemplate"),
             	getSortParam: function() {
             	    return "StoryNumericID";
                 }
             }, { 
-            	text: "Story Name", dataIndex: "Name", flex: 1
+            	text: "Story Name", dataIndex: "Name", width: 175,
             }, { 
             	text: "Story Project", dataIndex: "Project"
             }, {
-                text: "Story Schedule State", dataIndex: "StoryScheduleState"
+                text: "Story State", dataIndex: "StoryScheduleState", width: 75,
             }, {
-                text: "Story Iteration", dataIndex: "Iteration",
-                getSortParam: function(value) {
+                text: "Story Iteration", dataIndex: "Iteration", width: 70,
+                getSortParam: function() {
             	    return "IterationSortNumber";
                 }
             }, {
-                text: "Story Due Date", dataIndex: "DueDate"
+                text: "Story Due Date", dataIndex: "DueDate", xtype: 'datecolumn', format: 'D n/j/Y', width: 75
             }, {
-                text: "Feature ID", dataIndex: "Feature", width: 65,
+                text: "Feature ID", dataIndex: "Feature", width: 65, align: "center",
                 getSortParam: function() {
                     return "FeatureNumericID";  
                 },
@@ -288,40 +288,25 @@ Ext.define('CustomApp', {
                     return value ? '<a href="' + Rally.nav.Manager.getDetailUrl(value) + '">' + value.FormattedID + "</a>" : void 0;
                 }
             }, {
-                text: "Feature Name", dataIndex: "FeatureName", flex: 1
+                text: "Feature Name", dataIndex: "FeatureName", width: 175
             }, {
-                text: "Successor ID", dataIndex: "Successor",
-                renderer: function(value) {
-                    // // console.log(value);
-                    // var html = [];
-                    // Ext.Array.each(value, function(successor) { 
-                	   // html.push('<a href="' + Rally.nav.Manager.getDetailUrl(successor) + '">' + successor.FormattedID + "</a>");
-                    // });
-                    // return html.join("</br>");
-                    return value.FormattedID;
-                }
-            }, {
-                text: "Successor Name", dataIndex: "Successor",
-                renderer: function(value) {
-                    return value.Name;
-                }
-            }, {
-                text: "Successor Project", dataIndex: "Successor",
-                renderer: function(value) {
-                    return value.Project
-                }
-            }, {
-                text: "Successor Schedule State", dataIndex: "Successor",
-                renderer: function(value) {
-                    return value.ScheduleState;
-                }
-            }, {
-                text: "Successor Iteration", dataIndex: "Successor",
+                text: "Successor ID", dataIndex: "Successor",  tdCls: "grey-background", width: 75, align: "center",
                 getSortParam: function() {
-            	    return "SuccIterationSortNum";
+                  return "SuccNumericID";  
                 },
                 renderer: function(value) {
-                    return value.Iteration;
+                    return value.FormattedID ? '<a href="' + Rally.nav.Manager.getDetailUrl(value) + '">' + value.FormattedID + "</a>" : void 0;
+                }
+            }, {
+                text: "Successor Name", dataIndex: "SuccName",  tdCls: "grey-background", width: 175
+            }, {
+                text: "Successor Project", dataIndex: "SuccProject",  tdCls: "grey-background"
+            }, {
+                text: "Successor State", dataIndex: "SuccScheduleState",  tdCls: "grey-background", width: 75
+            }, {
+                text: "Successor Iteration", dataIndex: "SuccIteration",  tdCls: "grey-background", width: 70,
+                getSortParam: function() {
+            	    return "SuccIterationSortNum";
                 }
             }]
         });
@@ -341,67 +326,38 @@ Ext.define('CustomApp', {
     
     _getCSV: function () {
         
-        var cols = this._grid.columns;
+        var cols    = this._grid.columns;
         var data = '';
 
-        _.each(cols, function(col) {
-            data += this._getFieldTextAndEscape(col.text) + ',';
-        }, this);
-        data += 'Milestones,';
+        _.each(cols, function(col, index) {
+                data += this._getFieldTextAndEscape(col.text) + ',';
+        },this);
+        
         data += "\r\n";
         _.each(this._stories, function(record) {
-            var featureData = record["Feature"];
-            var storyData = '';
-            _.each(cols, function(col) {
+            _.each(cols, function(col, index) {
                 var text = '';
                 var fieldName = col.dataIndex;
-                if (fieldName === "Feature" && featureData) {
-                    text = featureData.FormattedID;
-                } else if (fieldName === "TestCaseCount") {
-                    text = record[fieldName].toString();
-                } else if (fieldName === "TestCases"){
-                    data += this._getTestCaseRowsForCSV(record[fieldName], storyData, record["TestCaseCount"], featureData);
+                if ((fieldName === 'Predecessor' || fieldName === 'Successor' || fieldName === 'Feature') && !!record[fieldName]) {
+                    text = record[fieldName].FormattedID; //example how to modify how data is shown in csv
+                    // console.log(text);
+                } else if (fieldName.indexOf("DueDate") !== -1 && !!record[fieldName]) {
+                    if(typeof record[fieldName] === "string") {
+                        text = record[fieldName].split("T")[0];
+                    } else {
+                        text = Ext.Date.format(record[fieldName], "Y-m-d");
+                    }
                 } else {
                     text = record[fieldName];
                 }
-                var cleanText = this._getFieldTextAndEscape(text);
-                data +=  cleanText + ',';
-                storyData += cleanText + ',';
-            }, this);
-            data += this._getMilestonesForCSV(featureData);
+                
+                data += this._getFieldTextAndEscape(text) + ',';
+
+            },this);
             data += "\r\n";
-        }, this);
+        },this);
 
         return data;
-    },
-    _getMilestonesForCSV: function(feature) {
-        var milestones = '';
-        _.each(feature.Milestones._tagsNameArray, function(milestone) {
-            milestones += this._getFieldTextAndEscape(milestone.Name) + ' ';
-        }, this);
-        return milestones;
-    },
-    _getTestCaseRowsForCSV: function(testcases, storyRowStr, testcaseCount, feature) {
-        //In this app in Rally, stories with multiple testcases group all the testcases into one table cell
-        //However, when exporting the data the requirement is for each 
-        //testcase to get it's own table row in the CSV, with all the story data duplicated.
-
-        var self = this;
-        var testcaseRows = '';
-        
-        _.each(testcases, function(testcase, index) {
-            if (index === 0) {
-                testcaseRows += self._getFieldTextAndEscape(testcase.FormattedID);
-            } else {
-                testcaseRows += storyRowStr + self._getFieldTextAndEscape(testcase.FormattedID);
-            }
-            
-            if(testcaseCount > 1 && index !== testcaseCount - 1 ) {
-                testcaseRows += ',' + self._getMilestonesForCSV(feature) + "\r\n";
-            }
-        });
-        
-        return testcaseRows;
     },
     _getFieldTextAndEscape: function(fieldData) {
         var string  = this._getFieldText(fieldData);  

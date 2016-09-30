@@ -1,3 +1,10 @@
 .app {
      /* Add app styles here */
 }
+tr:not(.x-grid-row-over):not(.x-grid-row-selected) .grey-background {
+     background: #eff0f1 !important;
+}
+
+.export-button, .export-button > span, .combo-box, .combo-box > span {
+    display: inline-block !important;
+}
