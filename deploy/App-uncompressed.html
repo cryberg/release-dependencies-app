@@ -45,6 +45,8 @@
         });
    },
     _getStateFilter: function() {
+        // this._myMask.show();
+        
         var PredandSucc = Rally.data.QueryFilter.or([{
             property: 'Predecessors.ObjectID',
             operator: '!=',
@@ -67,8 +69,7 @@
     },
     _onSelect: function() {
         var store = this._store;
-        console.log('on Select');
-    
+
         store.clearFilter(true);
         store.filter(this._getStateFilter());
     },
@@ -99,7 +100,7 @@
                 operator: '!=',
                 value: null
             }]),
-            
+
             limit: Infinity,
             listeners: {
                 load: this._onDataLoaded,
@@ -139,8 +140,6 @@
             	Iteration: (story.get("Iteration") ? story.get("Iteration").Name : ""),
                 DueDate: story.get("DueDate")
             };
-            
-            // console.log(s.Release);
             
             if (s.Feature) {
                 s.FeatureName = s.Feature.Name;
@@ -251,16 +250,27 @@
         this._myMask.hide();
         var store = Ext.create('Rally.data.custom.Store', {
             data: stories,
+            sorters: [
+                { property: 'IterationSortNumber', direction: 'DESC' },
+                { property: 'Project', direction: 'ASC'}
+            ],
+            // sort: (),
             proxy: {
                 type:'memory'
             }
         });
+        
+        // store.sort([
+        //     { property: 'IterationSortNumber', direction: 'DESC' },
+        //     { property: 'Project', direction: 'ASC'}
+        //     ]);
         
         if (!this._grid) {
             this._stories = stories;
             this._grid = Ext.create('Rally.ui.grid.Grid',{
                 itemId: 'storiesGrid',
                 store: store,
+                
                 showRowActionsColumn: false,
                 showPagingToolbar: false,
                 columnCfgs: [

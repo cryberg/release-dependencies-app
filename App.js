@@ -241,6 +241,10 @@ Ext.define('CustomApp', {
         this._myMask.hide();
         var store = Ext.create('Rally.data.custom.Store', {
             data: stories,
+            sorters: [
+                { property: 'IterationSortNumber', direction: 'DESC' },
+                { property: 'Project', direction: 'ASC'}
+            ],
             proxy: {
                 type:'memory'
             }
@@ -251,6 +255,7 @@ Ext.define('CustomApp', {
             this._grid = Ext.create('Rally.ui.grid.Grid',{
                 itemId: 'storiesGrid',
                 store: store,
+                
                 showRowActionsColumn: false,
                 showPagingToolbar: false,
                 columnCfgs: [
