@@ -38,11 +38,12 @@ Ext.define('CustomApp', {
         return {
             property: 'Release',
             operator: '=',
-            value: this.down('#stateComboBox').getRawValue()
+            value: this.down('#stateComboBox').getRawValue().split(" (")[0]
         };
     },
     _onSelect: function() {
-        var store = this._grid.getStore();
+        var store = this._store;
+        console.log('on Select');
     
         store.clearFilter(true);
         if (this.down('#stateComboBox').getRawValue() !== "-- No Entry --") {
@@ -52,7 +53,7 @@ Ext.define('CustomApp', {
         }
     },
    _initStore: function() {
-        Ext.create('Rally.data.wsapi.Store', {
+        this._store = Ext.create('Rally.data.wsapi.Store', {
             model: 'UserStory',
             autoLoad: true,
             remoteSort: false,
@@ -66,25 +67,24 @@ Ext.define('CustomApp', {
             	"ScheduleState",
             	"Successors",
             	"Iteration",
-            	"DueDate"
+            	"DueDate",
+            	"Predecessors"
         	],
+        	filters:  Rally.data.QueryFilter.or([{
+                property: 'Predecessors.ObjectID',
+                operator: '!=',
+                value: null
+            }, {
+                property: 'Successors.ObjectID',
+                operator: '!=',
+                value: null
+            }]),
             limit: Infinity,
             listeners: {
                 load: this._onDataLoaded,
                 scope: this
             }
         });
-       
-        this._featureStore = Ext.create('Rally.data.wsapi.Store', {
-            model: 'PortfolioItem',
-            autoLoad: true,
-            remoteSort: false,
-            fetch:[
-        	    "FormattedID", 
-            	"State"
-        	],
-            limit: Infinity
-       });
     },
     _onDataLoaded: function(store, data) {
         var stories = new Map(),
@@ -246,7 +246,7 @@ Ext.define('CustomApp', {
                 },
                 renderer: function(value, meta) {
                     meta.tdCls = "grey-background";
-                    return value.FormattedID ? '<a href="' + Rally.nav.Manager.getDetailUrl(value) + '">' + value.FormattedID + "</a>" : void 0;
+                    return value.FormattedID ? '<a href="' + Rally.nav.Manager.getDetailUrl(value) + '" target="_blank">' + value.FormattedID + "</a>" : void 0;
                 }
             }, {
                 text: "Predecessor Name", dataIndex: "PredName",  tdCls: "grey-background", width: 175
@@ -268,6 +268,8 @@ Ext.define('CustomApp', {
                 }
             }, { 
             	text: "Story Name", dataIndex: "Name", width: 175,
+            // }, { 
+            // 	text: "RELEASE", dataIndex: "Release",
             }, { 
             	text: "Story Project", dataIndex: "Project"
             }, {
@@ -285,7 +287,7 @@ Ext.define('CustomApp', {
                     return "FeatureNumericID";  
                 },
                 renderer: function(value) {
-                    return value ? '<a href="' + Rally.nav.Manager.getDetailUrl(value) + '">' + value.FormattedID + "</a>" : void 0;
+                    return value ? '<a href="' + Rally.nav.Manager.getDetailUrl(value) + '" target="_blank">' + value.FormattedID + "</a>" : void 0;
                 }
             }, {
                 text: "Feature Name", dataIndex: "FeatureName", width: 175
@@ -295,7 +297,7 @@ Ext.define('CustomApp', {
                   return "SuccNumericID";  
                 },
                 renderer: function(value) {
-                    return value.FormattedID ? '<a href="' + Rally.nav.Manager.getDetailUrl(value) + '">' + value.FormattedID + "</a>" : void 0;
+                    return value.FormattedID ? '<a href="' + Rally.nav.Manager.getDetailUrl(value) + '" target="_blank">' + value.FormattedID + "</a>" : void 0;
                 }
             }, {
                 text: "Successor Name", dataIndex: "SuccName",  tdCls: "grey-background", width: 175
@@ -339,8 +341,7 @@ Ext.define('CustomApp', {
                 var text = '';
                 var fieldName = col.dataIndex;
                 if ((fieldName === 'Predecessor' || fieldName === 'Successor' || fieldName === 'Feature') && !!record[fieldName]) {
-                    text = record[fieldName].FormattedID; //example how to modify how data is shown in csv
-                    // console.log(text);
+                    text = record[fieldName].FormattedID;
                 } else if (fieldName.indexOf("DueDate") !== -1 && !!record[fieldName]) {
                     if(typeof record[fieldName] === "string") {
                         text = record[fieldName].split("T")[0];
