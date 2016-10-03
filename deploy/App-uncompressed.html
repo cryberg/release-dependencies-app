@@ -45,9 +45,9 @@
         });
    },
     _getStateFilter: function() {
-        // this._myMask.show();
-        
-        var PredandSucc = Rally.data.QueryFilter.or([{
+        this._myMask.show();
+
+        var Dependencies = Rally.data.QueryFilter.or([{
             property: 'Predecessors.ObjectID',
             operator: '!=',
             value: null
@@ -58,9 +58,9 @@
         }]);
         
         if (this.down('#stateComboBox').getRawValue() === "All Releases") {
-            return PredandSucc;
+            return Dependencies;
         } else {
-            return PredandSucc.and(Ext.create('Rally.data.QueryFilter', {
+            return Dependencies.and(Ext.create('Rally.data.QueryFilter', {
                 property: 'Release.Name',
                 operator: '=',
                 value: this.down('#stateComboBox').getRawValue().split(" (")[0]
@@ -100,7 +100,6 @@
                 operator: '!=',
                 value: null
             }]),
-
             limit: Infinity,
             listeners: {
                 load: this._onDataLoaded,
@@ -109,6 +108,12 @@
         });
     },
     _onDataLoaded: function(store, data) {
+        
+        if(data.length === 0) {
+            this._makeGrid(data);
+            return;
+        }
+        
         var stories = new Map(),
             promises = [],
             self = this;
@@ -254,16 +259,10 @@
                 { property: 'IterationSortNumber', direction: 'DESC' },
                 { property: 'Project', direction: 'ASC'}
             ],
-            // sort: (),
             proxy: {
                 type:'memory'
             }
         });
-        
-        // store.sort([
-        //     { property: 'IterationSortNumber', direction: 'DESC' },
-        //     { property: 'Project', direction: 'ASC'}
-        //     ]);
         
         if (!this._grid) {
             this._stories = stories;

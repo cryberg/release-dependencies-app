@@ -36,9 +36,9 @@ Ext.define('CustomApp', {
         });
    },
     _getStateFilter: function() {
-        // this._myMask.show();
-        
-        var PredandSucc = Rally.data.QueryFilter.or([{
+        this._myMask.show();
+
+        var Dependencies = Rally.data.QueryFilter.or([{
             property: 'Predecessors.ObjectID',
             operator: '!=',
             value: null
@@ -49,9 +49,9 @@ Ext.define('CustomApp', {
         }]);
         
         if (this.down('#stateComboBox').getRawValue() === "All Releases") {
-            return PredandSucc;
+            return Dependencies;
         } else {
-            return PredandSucc.and(Ext.create('Rally.data.QueryFilter', {
+            return Dependencies.and(Ext.create('Rally.data.QueryFilter', {
                 property: 'Release.Name',
                 operator: '=',
                 value: this.down('#stateComboBox').getRawValue().split(" (")[0]
@@ -91,7 +91,6 @@ Ext.define('CustomApp', {
                 operator: '!=',
                 value: null
             }]),
-
             limit: Infinity,
             listeners: {
                 load: this._onDataLoaded,
@@ -100,6 +99,12 @@ Ext.define('CustomApp', {
         });
     },
     _onDataLoaded: function(store, data) {
+        
+        if(data.length === 0) {
+            this._makeGrid(data);
+            return;
+        }
+        
         var stories = new Map(),
             promises = [],
             self = this;
@@ -288,8 +293,6 @@ Ext.define('CustomApp', {
                     }
                 }, { 
                 	text: "Story Name", dataIndex: "Name", width: 175,
-                // }, { 
-                // 	text: "RELEASE", dataIndex: "Release",
                 }, { 
                 	text: "Story Project", dataIndex: "Project"
                 }, {
