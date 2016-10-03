@@ -26,6 +26,7 @@ Ext.define('CustomApp', {
             xtype: 'rallyreleasecombobox',
             itemId: 'stateComboBox',
             allowNoEntry: true,
+            noEntryText: 'All Releases',
             model: ['userstory'],
             listeners: {
                 scope: this,
@@ -35,22 +36,33 @@ Ext.define('CustomApp', {
         });
    },
     _getStateFilter: function() {
-        return {
-            property: 'Release',
-            operator: '=',
-            value: this.down('#stateComboBox').getRawValue().split(" (")[0]
-        };
+        // this._myMask.show();
+        
+        var PredandSucc = Rally.data.QueryFilter.or([{
+            property: 'Predecessors.ObjectID',
+            operator: '!=',
+            value: null
+        }, {
+            property: 'Successors.ObjectID',
+            operator: '!=',
+            value: null
+        }]);
+        
+        if (this.down('#stateComboBox').getRawValue() === "All Releases") {
+            return PredandSucc;
+        } else {
+            return PredandSucc.and(Ext.create('Rally.data.QueryFilter', {
+                property: 'Release.Name',
+                operator: '=',
+                value: this.down('#stateComboBox').getRawValue().split(" (")[0]
+            }));
+        }        
     },
     _onSelect: function() {
         var store = this._store;
-        console.log('on Select');
-    
+
         store.clearFilter(true);
-        if (this.down('#stateComboBox').getRawValue() !== "-- No Entry --") {
-            store.filter(this._getStateFilter());
-        } else {
-            store.reload();
-        }
+        store.filter(this._getStateFilter());
     },
    _initStore: function() {
         this._store = Ext.create('Rally.data.wsapi.Store', {
@@ -79,6 +91,7 @@ Ext.define('CustomApp', {
                 operator: '!=',
                 value: null
             }]),
+
             limit: Infinity,
             listeners: {
                 load: this._onDataLoaded,
@@ -232,93 +245,98 @@ Ext.define('CustomApp', {
                 type:'memory'
             }
         });
-        this._stories = stories;
-        this._grid = Ext.create('Rally.ui.grid.Grid',{
-            itemId: 'storiesGrid',
-            store: store,
-            showRowActionsColumn: false,
-            showPagingToolbar: false,
-            columnCfgs: [
-            {
-                text: "Predecessor ID", dataIndex: "Predecessor", tdCls: "grey-background", width: 75, align: "center",
-                getSortParam: function() {
-                  return "PredNumericID";  
-                },
-                renderer: function(value, meta) {
-                    meta.tdCls = "grey-background";
-                    return value.FormattedID ? '<a href="' + Rally.nav.Manager.getDetailUrl(value) + '" target="_blank">' + value.FormattedID + "</a>" : void 0;
-                }
-            }, {
-                text: "Predecessor Name", dataIndex: "PredName",  tdCls: "grey-background", width: 175
-            }, {
-                text: "Predecessor Project", dataIndex: "PredProject",  tdCls: "grey-background"
-            }, {
-                text: "Predecessor State", dataIndex: "PredScheduleState",  tdCls: "grey-background", width: 75
-            }, {
-                text: "Predecessor Iteration", dataIndex: "PredIteration",  tdCls: "grey-background", width: 70,
-                getSortParam: function() {
-            	    return "PredIterationSortNum";
-                }
-            }, {
-                text: "Predecessor Due Date", dataIndex: "PredDueDate",  tdCls: "grey-background", xtype: 'datecolumn', format: 'D n/j/Y', width: 75
-            }, { 
-            	text: "Story ID", dataIndex: "FormattedID", xtype: "templatecolumn", width: 75, tpl: Ext.create("Rally.ui.renderer.template.FormattedIDTemplate"),
-            	getSortParam: function() {
-            	    return "StoryNumericID";
-                }
-            }, { 
-            	text: "Story Name", dataIndex: "Name", width: 175,
-            // }, { 
-            // 	text: "RELEASE", dataIndex: "Release",
-            }, { 
-            	text: "Story Project", dataIndex: "Project"
-            }, {
-                text: "Story State", dataIndex: "StoryScheduleState", width: 75,
-            }, {
-                text: "Story Iteration", dataIndex: "Iteration", width: 70,
-                getSortParam: function() {
-            	    return "IterationSortNumber";
-                }
-            }, {
-                text: "Story Due Date", dataIndex: "DueDate", xtype: 'datecolumn', format: 'D n/j/Y', width: 75
-            }, {
-                text: "Feature ID", dataIndex: "Feature", width: 65, align: "center",
-                getSortParam: function() {
-                    return "FeatureNumericID";  
-                },
-                renderer: function(value) {
-                    return value ? '<a href="' + Rally.nav.Manager.getDetailUrl(value) + '" target="_blank">' + value.FormattedID + "</a>" : void 0;
-                }
-            }, {
-                text: "Feature Name", dataIndex: "FeatureName", width: 175
-            }, {
-                text: "Successor ID", dataIndex: "Successor",  tdCls: "grey-background", width: 75, align: "center",
-                getSortParam: function() {
-                  return "SuccNumericID";  
-                },
-                renderer: function(value) {
-                    return value.FormattedID ? '<a href="' + Rally.nav.Manager.getDetailUrl(value) + '" target="_blank">' + value.FormattedID + "</a>" : void 0;
-                }
-            }, {
-                text: "Successor Name", dataIndex: "SuccName",  tdCls: "grey-background", width: 175
-            }, {
-                text: "Successor Project", dataIndex: "SuccProject",  tdCls: "grey-background"
-            }, {
-                text: "Successor State", dataIndex: "SuccScheduleState",  tdCls: "grey-background", width: 75
-            }, {
-                text: "Successor Iteration", dataIndex: "SuccIteration",  tdCls: "grey-background", width: 70,
-                getSortParam: function() {
-            	    return "SuccIterationSortNum";
-                }
-            }]
-        });
-        this.down('#gridContainer').add(this._grid);
-        this.down('#exportBtn').add({
-            xtype: 'rallybutton',
-            text: 'Export to CSV',
-            handler: this._onClickExport,
-            scope: this
-        });
+        
+        if (!this._grid) {
+            this._stories = stories;
+            this._grid = Ext.create('Rally.ui.grid.Grid',{
+                itemId: 'storiesGrid',
+                store: store,
+                showRowActionsColumn: false,
+                showPagingToolbar: false,
+                columnCfgs: [
+                {
+                    text: "Predecessor ID", dataIndex: "Predecessor", tdCls: "grey-background", width: 75, align: "center",
+                    getSortParam: function() {
+                      return "PredNumericID";  
+                    },
+                    renderer: function(value, meta) {
+                        meta.tdCls = "grey-background";
+                        return value.FormattedID ? '<a href="' + Rally.nav.Manager.getDetailUrl(value) + '" target="_blank">' + value.FormattedID + "</a>" : void 0;
+                    }
+                }, {
+                    text: "Predecessor Name", dataIndex: "PredName",  tdCls: "grey-background", width: 175
+                }, {
+                    text: "Predecessor Project", dataIndex: "PredProject",  tdCls: "grey-background"
+                }, {
+                    text: "Predecessor State", dataIndex: "PredScheduleState",  tdCls: "grey-background", width: 75
+                }, {
+                    text: "Predecessor Iteration", dataIndex: "PredIteration",  tdCls: "grey-background", width: 70,
+                    getSortParam: function() {
+                	    return "PredIterationSortNum";
+                    }
+                }, {
+                    text: "Predecessor Due Date", dataIndex: "PredDueDate",  tdCls: "grey-background", xtype: 'datecolumn', format: 'D n/j/Y', width: 75
+                }, { 
+                	text: "Story ID", dataIndex: "FormattedID", xtype: "templatecolumn", width: 75, tpl: Ext.create("Rally.ui.renderer.template.FormattedIDTemplate"),
+                	getSortParam: function() {
+                	    return "StoryNumericID";
+                    }
+                }, { 
+                	text: "Story Name", dataIndex: "Name", width: 175,
+                // }, { 
+                // 	text: "RELEASE", dataIndex: "Release",
+                }, { 
+                	text: "Story Project", dataIndex: "Project"
+                }, {
+                    text: "Story State", dataIndex: "StoryScheduleState", width: 75,
+                }, {
+                    text: "Story Iteration", dataIndex: "Iteration", width: 70,
+                    getSortParam: function() {
+                	    return "IterationSortNumber";
+                    }
+                }, {
+                    text: "Story Due Date", dataIndex: "DueDate", xtype: 'datecolumn', format: 'D n/j/Y', width: 75
+                }, {
+                    text: "Feature ID", dataIndex: "Feature", width: 65, align: "center",
+                    getSortParam: function() {
+                        return "FeatureNumericID";  
+                    },
+                    renderer: function(value) {
+                        return value ? '<a href="' + Rally.nav.Manager.getDetailUrl(value) + '" target="_blank">' + value.FormattedID + "</a>" : void 0;
+                    }
+                }, {
+                    text: "Feature Name", dataIndex: "FeatureName", width: 175
+                }, {
+                    text: "Successor ID", dataIndex: "Successor",  tdCls: "grey-background", width: 75, align: "center",
+                    getSortParam: function() {
+                      return "SuccNumericID";  
+                    },
+                    renderer: function(value) {
+                        return value.FormattedID ? '<a href="' + Rally.nav.Manager.getDetailUrl(value) + '" target="_blank">' + value.FormattedID + "</a>" : void 0;
+                    }
+                }, {
+                    text: "Successor Name", dataIndex: "SuccName",  tdCls: "grey-background", width: 175
+                }, {
+                    text: "Successor Project", dataIndex: "SuccProject",  tdCls: "grey-background"
+                }, {
+                    text: "Successor State", dataIndex: "SuccScheduleState",  tdCls: "grey-background", width: 75
+                }, {
+                    text: "Successor Iteration", dataIndex: "SuccIteration",  tdCls: "grey-background", width: 70,
+                    getSortParam: function() {
+                	    return "SuccIterationSortNum";
+                    }
+                }]
+            });
+            this.down('#gridContainer').add(this._grid);
+            this.down('#exportBtn').add({
+                xtype: 'rallybutton',
+                text: 'Export to CSV',
+                handler: this._onClickExport,
+                scope: this
+            });
+        } else {
+            this._grid.reconfigure(store);
+        }
     },
 
     _onClickExport: function(){
