@@ -14,6 +14,16 @@ Ext.define('CustomApp', {
         },
         {
             xtype: 'container',
+            itemId: 'iterationComboboxContainer',
+            cls: 'combo-box'
+        },
+        {
+            xtype: 'container',
+            itemId: 'submitButton',
+            cls: 'submit-button'
+        },
+        {
+            xtype: 'container',
             itemId: 'gridContainer'
         }
     ],
@@ -27,14 +37,34 @@ Ext.define('CustomApp', {
             itemId: 'stateComboBox',
             allowNoEntry: true,
             noEntryText: 'All Releases',
+            value: 'PSI 12',
+            model: ['userstory'],
+            listeners: {
+                scope: this
+            }
+        });
+        
+        this.down('#comboboxContainer').add({
+            xtype: 'rallyiterationcombobox',
+            itemId: 'iterationComboBox',
+            allowNoEntry: true,
+            noEntryText: 'All Iterations',
             model: ['userstory'],
             listeners: {
                 scope: this,
-                select: this._onSelect,
                 ready: this._initStore
             }
         });
-   },
+        
+        this.down('#submitButton').add({
+            text:'Filter Stories',
+            xtype: 'button',
+            listeners: {
+                click: this._submitFilter,
+                scope: this
+            }
+        });
+    },
     _getStateFilter: function() {
         this._myMask.show();
 
@@ -48,23 +78,44 @@ Ext.define('CustomApp', {
             value: null
         }]);
         
-        if (this.down('#stateComboBox').getRawValue() === "All Releases") {
-            return Dependencies;
-        } else {
-            return Dependencies.and(Ext.create('Rally.data.QueryFilter', {
+        if(this.down('#iterationComboBox').getRawValue() !== "All Iterations") { 
+            var iterationFilter = {
+                property: 'Iteration.Name',
+                operator: '=',
+                value: this.down('#iterationComboBox').getRawValue().split(" (")[0]
+            };
+        }
+        
+        if(this.down('#stateComboBox').getRawValue() !== "All Releases") {
+            var releaseFilter = {
                 property: 'Release.Name',
                 operator: '=',
                 value: this.down('#stateComboBox').getRawValue().split(" (")[0]
-            }));
-        }        
+            };
+        }
+        
+        if (!releaseFilter && !iterationFilter) {
+            return Dependencies;
+        } else if (releaseFilter && iterationFilter ) {
+            return Dependencies
+                .and(Ext.create('Rally.data.QueryFilter', releaseFilter))
+                .and(Ext.create('Rally.data.QueryFilter', iterationFilter));
+        } else if (!releaseFilter && iterationFilter) {
+            return Dependencies
+                .and(Ext.create('Rally.data.QueryFilter', iterationFilter));
+        } else {
+            return Dependencies
+            .and(Ext.create('Rally.data.QueryFilter', releaseFilter));
+        }    
     },
-    _onSelect: function() {
+    _submitFilter: function() {
         var store = this._store;
 
         store.clearFilter(true);
         store.filter(this._getStateFilter());
     },
    _initStore: function() {
+        var scope = this;
         this._store = Ext.create('Rally.data.wsapi.Store', {
             model: 'UserStory',
             autoLoad: true,
@@ -297,6 +348,8 @@ Ext.define('CustomApp', {
                 	text: "Story Project", dataIndex: "Project"
                 }, {
                     text: "Story State", dataIndex: "StoryScheduleState", width: 75,
+                }, {
+                    text: "Release", dataIndex: "Release",
                 }, {
                     text: "Story Iteration", dataIndex: "Iteration", width: 70,
                     getSortParam: function() {

@@ -4,12 +4,20 @@ tr:not(.x-grid-row-over):not(.x-grid-row-selected) .grey-background {
 
 .export-button,
 .export-button > span,
+.submit-button,
+.submit-button > span,
 .combo-box,
-.combo-box > span {
+.combo-box > span,
+.combo-box > span > div > table {
     display: inline-block !important;
 }
 
-.combo-box table.rally-release-combobox {
+.combo-box > span > div {
+    display: inline;
+}
+
+.combo-box table.rally-release-combobox,
+.combo-box table.rally-iteration-combobox {
     margin-bottom: 0;
     margin-top: 5px;
 }
