@@ -37,7 +37,6 @@ Ext.define('CustomApp', {
             itemId: 'stateComboBox',
             allowNoEntry: true,
             noEntryText: 'All Releases',
-            value: 'PSI 12',
             model: ['userstory'],
             listeners: {
                 scope: this
@@ -66,8 +65,6 @@ Ext.define('CustomApp', {
         });
     },
     _getStateFilter: function() {
-        this._myMask.show();
-
         var Dependencies = Rally.data.QueryFilter.or([{
             property: 'Predecessors.ObjectID',
             operator: '!=',
@@ -78,8 +75,10 @@ Ext.define('CustomApp', {
             value: null
         }]);
         
+        var iterationFilter, releaseFilter;
+        
         if(this.down('#iterationComboBox').getRawValue() !== "All Iterations") { 
-            var iterationFilter = {
+            iterationFilter = {
                 property: 'Iteration.Name',
                 operator: '=',
                 value: this.down('#iterationComboBox').getRawValue().split(' (')[0]
@@ -87,7 +86,7 @@ Ext.define('CustomApp', {
         }
         
         if(this.down('#stateComboBox').getRawValue() !== "All Releases") {
-            var releaseFilter = {
+            releaseFilter = {
                 property: 'Release.Name',
                 operator: '=',
                 value: this.down('#stateComboBox').getRawValue().split(' (')[0]
@@ -112,6 +111,7 @@ Ext.define('CustomApp', {
         var store = this._store;
 
         store.clearFilter(true);
+        this._myMask.show();
         store.filter(this._getStateFilter());
     },
    _initStore: function() {
@@ -133,15 +133,7 @@ Ext.define('CustomApp', {
             	'DueDate',
             	'Predecessors'
         	],
-        	filters:  Rally.data.QueryFilter.or([{
-                property: 'Predecessors.ObjectID',
-                operator: '!=',
-                value: null
-            }, {
-                property: 'Successors.ObjectID',
-                operator: '!=',
-                value: null
-            }]),
+            filters: [this._getStateFilter()],
             limit: Infinity,
             listeners: {
                 load: this._onDataLoaded,
@@ -295,6 +287,8 @@ Ext.define('CustomApp', {
     },
     _makeGrid:function(stories){
         this._myMask.hide();
+        this._stories = stories;
+
         var store = Ext.create('Rally.data.custom.Store', {
             data: stories,
             sorters: [
@@ -307,7 +301,6 @@ Ext.define('CustomApp', {
         });
         
         if (!this._grid) {
-            this._stories = stories;
             this._grid = Ext.create('Rally.ui.grid.Grid',{
                 itemId: 'storiesGrid',
                 store: store,
@@ -349,7 +342,7 @@ Ext.define('CustomApp', {
                 }, {
                     text: 'Story State', dataIndex: 'StoryScheduleState', width: 75,
                 }, {
-                    text: 'Release', dataIndex: 'Release',
+                    text: 'Release', dataIndex: 'Release'
                 }, {
                     text: 'Story Iteration', dataIndex: 'Iteration', width: 70,
                     getSortParam: function() {
