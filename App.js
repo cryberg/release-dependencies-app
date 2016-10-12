@@ -37,7 +37,10 @@ Ext.define('CustomApp', {
             itemId: 'stateComboBox',
             allowNoEntry: true,
             noEntryText: 'All Releases',
-            model: ['userstory'],
+            value: 2,
+            model: 'userstory',
+            stateful: true,
+            stateId: this.getContext().getScopedStateId('release'),
             listeners: {
                 scope: this
             }
@@ -48,7 +51,9 @@ Ext.define('CustomApp', {
             itemId: 'iterationComboBox',
             allowNoEntry: true,
             noEntryText: 'All Iterations',
-            model: ['userstory'],
+            model: 'userstory',
+            stateful: true,
+            stateId: this.getContext().getScopedStateId('iteration'),
             listeners: {
                 scope: this,
                 ready: this._initStore
@@ -120,7 +125,7 @@ Ext.define('CustomApp', {
             model: 'UserStory',
             autoLoad: true,
             remoteSort: false,
-            fetch:[
+            fetch: [
         	    'FormattedID', 
             	'Name',
             	'Project',
