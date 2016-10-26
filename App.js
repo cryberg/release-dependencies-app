@@ -390,9 +390,11 @@ Ext.define('CustomApp', {
             this.down('#exportBtn').add({
                 xtype: 'rallybutton',
                 text: 'Export to CSV',
-                handler: this._onClickExport,
+                href: 'data:text/csv;charset=utf8,' + encodeURIComponent(this._getCSV()),
+                id: 'exportButton',
                 scope: this
             });
+            document.getElementById("exportButton").setAttribute("download","export.csv");
         } else {
             this._grid.reconfigure(store);
         }
